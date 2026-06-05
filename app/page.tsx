@@ -1,8 +1,8 @@
-import One from "./components/1_10/1";
-import Two from "./components/1_10/2";
+import Three from "./components/1_10/3";
+import Four from "./components/1_10/4";
 
 export default function Home() {
   return (
-    <Two />
+    <Four />
   )
 }
