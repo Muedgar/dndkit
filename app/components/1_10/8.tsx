@@ -1,107 +1,170 @@
-'use client'
+'use client';
 
-import { DragDropProvider, DragOverlay, useDraggable, useDroppable } from "@dnd-kit/react"
-import { useSortable } from "@dnd-kit/react/sortable"
-import { useState } from "react"
+import React, { ReactNode, useState } from 'react';
+import {
+  DragDropProvider,
+  DragOverlay,
+  useDraggable,
+  useDroppable,
+} from '@dnd-kit/react';
+import { useSortable } from '@dnd-kit/react/sortable';
 
+function moveItem<T>(array: T[], from: number, to: number) {
+  const copy = [...array];
+  const [item] = copy.splice(from, 1);
+  copy.splice(to, 0, item);
+  return copy;
+}
 
 export default function Eight() {
-    const [draggables, setDraggables] = useState<string []>(['1','2','3','4','5','6','7']);
-    const [droppables, setDroppables] = useState<string[]>([]);
+  const [draggables, setDraggables] = useState(['1', '2', '3', '4', '5', '6', '7']);
+  const [droppables, setDroppables] = useState<string[]>([]);
 
-    return (
-        <div className="w-screen h-screen bg-amber-300">
-            <DragDropProvider
-                onDragEnd={(event) => {
-                    if (event.canceled) return;
+  return (
+    <div className="h-screen w-screen bg-amber-300">
+      <DragDropProvider
+        onDragEnd={(event) => {
+          if (event.canceled) return;
 
-                    const {source, target} = event.operation;
+          const { source, target } = event.operation;
 
-                    const targetId = target?.id;
-                    const sourceId = source?.id;
+          const sourceId = String(source?.id ?? '');
+          const targetId = String(target?.id ?? '');
 
-                    // if drag ends over a non target area move item back to it's place
-                    if (!targetId) {
-                        // put source back in draggables
-                        setDraggables(prev => {
-                            if (prev.includes(sourceId as string)) return prev;
-                            return [...prev, sourceId as string]
-                        })
+          if (!sourceId) return;
 
-                        // remove it from droppables
-                        setDroppables(prev => prev.filter(d => d != sourceId))
-                    }
+          const sourceIsAlreadyInDropZone = droppables.includes(sourceId);
+          const targetIsDropZone = targetId === 'droppable-area';
+          const targetIsSortableItem = droppables.includes(targetId);
 
-                    if (targetId == 'droppable-area') {
-                        // remove it from draggables
-                        setDraggables(prev => prev.filter(d => d != sourceId))
+          // 1. Reorder items already inside the sortable list
+          if (sourceIsAlreadyInDropZone) {
+            const sortable = (source as any)?.sortable;
 
-                    // put source back in droppables
-                         setDroppables(prev => {
-                            if (prev.includes(sourceId as string)) return prev;
-                            return [...prev, sourceId as string]
-                        })
-                    }
+            if (!sortable) return;
 
-                        
-                }}
-            >
-                <div className="w-full pt-10 flex flex-row justify-evenly items-center">
-                    {draggables.map((item) => (
-                        <DraggableComponent key={item} id={item} />
-                    ))}
-                </div>
-                <div className="w-full pt-10 flex flex-row justify-evenly items-center">
-                    <DroppableComponent id="droppable-area">
-                    {droppables.map((item, index) => (
-                        <SortableComponent key={item} index={index} id={item}>
-                            <p className="font-bold text-white">{item}</p>
-                            </SortableComponent>
-                    ))}
-                        </DroppableComponent>
-                    
-                </div>
-            </DragDropProvider>
+            const oldIndex = sortable.initialIndex;
+            const newIndex = sortable.index;
+
+            if (oldIndex === newIndex) return;
+
+            setDroppables((prev) => moveItem(prev, oldIndex, newIndex));
+            return;
+          }
+
+          // 2. Move new item from top list into drop zone
+          if (targetIsDropZone || targetIsSortableItem) {
+            setDraggables((prev) => prev.filter((item) => item !== sourceId));
+
+            setDroppables((prev) => {
+              if (prev.includes(sourceId)) return prev;
+
+              if (targetIsSortableItem) {
+                const targetIndex = prev.indexOf(targetId);
+                const copy = [...prev];
+                copy.splice(targetIndex, 0, sourceId);
+                return copy;
+              }
+
+              return [...prev, sourceId];
+            });
+          }
+        }}
+      >
+        <div className="flex w-full flex-row items-center justify-evenly pt-10">
+          {draggables.map((item) => (
+            <DraggableItem key={item} id={item}>
+              {item}
+            </DraggableItem>
+          ))}
         </div>
-    )
+
+        <div className="flex w-full flex-row items-center justify-center pt-10">
+          <DroppableArea id="droppable-area">
+            <div className="flex gap-4">
+              {droppables.map((item, index) => (
+                <SortableItem key={item} id={item} index={index}>
+                  {item}
+                </SortableItem>
+              ))}
+            </div>
+          </DroppableArea>
+        </div>
+
+        <DragOverlay>
+          {(source) => (
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black font-bold text-white">
+              {source.id}
+            </div>
+          )}
+        </DragOverlay>
+      </DragDropProvider>
+    </div>
+  );
 }
 
-const DraggableComponent = ({id, children}: {id: string, children?: React.ReactNode}) => {
-    const {ref} = useDraggable({
-        id
-    })
-    return (
-        <div ref={ref} className="w-10 h-10 cursor-pointer bg-green-500 rounded-full">
-            {children}
-            <DragOverlay>
-       {source => (
-          <div>Dragging {source.id}</div>
-        )}
-      </DragOverlay>
-        </div>
-    )
+function DraggableItem({
+  id,
+  children,
+}: {
+  id: string;
+  children: ReactNode;
+}) {
+  const { ref } = useDraggable({ id });
+
+  return (
+    <div
+      ref={ref}
+      className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-green-500 font-bold text-white"
+    >
+      {children}
+    </div>
+  );
 }
 
-const DroppableComponent = ({id, children}: {id: string, children: React.ReactNode}) => {
-    const {ref} = useDroppable({
-        id
-    })
-    return (
-        <div ref={ref} className="w-125 min-h-40 p-10 bg-blue-500 rounded-2xl">
-            {children}
-        </div>
-    )
+function DroppableArea({
+  id,
+  children,
+}: {
+  id: string;
+  children: ReactNode;
+}) {
+  const { ref } = useDroppable({ id });
+
+  return (
+    <div
+      ref={ref}
+      className="min-h-40 w-125 rounded-2xl bg-blue-500 p-10"
+    >
+      {children}
+    </div>
+  );
 }
 
-const SortableComponent = ({id, index, children}: {id: string, index: number, children?: React.ReactNode }) => {
-    const {ref} = useSortable({
-        id,
-        index
-    })
+function SortableItem({
+  id,
+  index,
+  children,
+}: {
+  id: string;
+  index: number;
+  children: ReactNode;
+}) {
+  const { ref, isDragging } = useSortable({
+    id,
+    index,
+    group: 'droppable-items',
+  });
 
-    return (
-        <div ref={ref}  className="w-10 h-10 cursor-pointer bg-green-500 rounded-full">
-            {children}
-        </div>
-    )
+  return (
+    <div
+      ref={ref}
+      className={[
+        'flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-green-500 font-bold text-white',
+        isDragging ? 'opacity-40' : '',
+      ].join(' ')}
+    >
+      {children}
+    </div>
+  );
 }
