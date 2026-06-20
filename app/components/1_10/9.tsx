@@ -24,7 +24,7 @@ export default function Nine() {
                     const { source, target } = event.operation;
 
                     const sourceId = String(source?.id ?? '');
-                    const targetId = String(source?.id ?? '');
+                    const targetId = String(target?.id ?? '');
 
                     if (!sourceId) return;
 
