@@ -8,3 +8,4 @@ export * from './1_10/9'
 
 // 11-20
 export * from './11_20/11'
+export * from './11_20/12'

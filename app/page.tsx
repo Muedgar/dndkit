@@ -1,7 +1,7 @@
-import Eleven from "./components/11_20/11";
+import Twelve from "./components/11_20/12";
 
 export default function Home() {
   return (
-    <Eleven />
+    <Twelve />
   )
 }
